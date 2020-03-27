@@ -75,7 +75,9 @@ func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 		go func(i int, doc string) {
 			defer wg.Done()
 			noJsonString := strings.Replace(doc, `\`, "", -1)
-			fixId := strings.Replace(noJsonString, `_id`, "id", -1)
+			noArrRight := strings.Replace(noJsonString, `[`, "", -1)
+			noArrLeft := strings.Replace(noArrRight, `]`, "", -1)
+			fixId := strings.Replace(noArrLeft, `_id`, "id", -1)
 			var d map[string]interface{}
 			json.Unmarshal([]byte(fixId), &d)
 			id := d[indexKey].(string)
