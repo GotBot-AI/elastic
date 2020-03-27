@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -76,6 +77,7 @@ func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 			defer wg.Done()
 			noJsonString := strings.Replace(doc, `\`, "", -1)
 			fixId := strings.Replace(noJsonString, `_id`, "id", -1)
+			fmt.Println(fixId)
 			var d map[string]interface{}
 			json.Unmarshal([]byte(fixId), &d)
 			id := d[indexKey].(string)
