@@ -69,20 +69,23 @@ func Create(co ClientOptions) Client {
 }
 
 //IndexMany - index one or many documents
-func (clnt *Client) IndexMany(index string, jsonArr []string) {
+func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 	for i, doc := range jsonArr {
 		wg.Add(1)
 		go func(i int, doc string) {
 			defer wg.Done()
+			noJsonString := strings.Replace(doc, `\`, "", -1)
+			fixId := strings.Replace(noJsonString, `_id`, "id", -1)
 			var d map[string]interface{}
-			json.Unmarshal([]byte(doc), &d)
-			_id := d["id"].(string)
+			json.Unmarshal([]byte(fixId), &d)
+			id := d[indexKey].(string)
 			req := esapi.IndexRequest{
 				Index:      index,
-				DocumentID: _id,
-				Body:       strings.NewReader(doc),
+				DocumentID: id,
+				Body:       strings.NewReader(fixId),
 				Refresh:    "true",
 			}
+
 			// Perform the request with the client.
 			res, err := req.Do(context.Background(), clnt.ES)
 			if err != nil {
