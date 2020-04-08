@@ -81,7 +81,7 @@ func (clnt *Client) MapIndexs(m []map[string]string) {
 				Index: is,
 			}
 			checkres, err := check.Do(context.Background(), clnt.ES)
-			fmt.Println(checkres)
+			fmt.Println(checkres.StatusCode)
 			req := esapi.IndicesCreateRequest{
 				Index:      index,
 				Body:       strings.NewReader(body),
