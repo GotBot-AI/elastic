@@ -76,6 +76,12 @@ func (clnt *Client) MapIndexs(m []map[string]string) {
 			defer wg.Done()
 			index := doc["index"]
 			body := doc["map"]
+			is := []string{index}
+			check := esapi.IndicesExistsRequest{
+				Index: is,
+			}
+			checkres, err := check.Do(context.Background(), clnt.ES)
+			fmt.Println(checkres)
 			req := esapi.IndicesCreateRequest{
 				Index:      index,
 				Body:       strings.NewReader(body),
