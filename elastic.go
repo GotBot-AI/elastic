@@ -69,6 +69,48 @@ func Create(co ClientOptions) Client {
 	return Client{ES: es}
 }
 
+func (clnt *Client) MapIndexs(m []map[string]string) {
+	for i, doc := range m {
+		wg.Add(1)
+		go func(i int, doc map[string]string) {
+			defer wg.Done()
+			index := []string{doc["index"]}
+			body := doc["map"]
+			req := esapi.IndicesPutMappingRequest{
+				Index:             index,
+				Body:              strings.NewReader(body),
+				AllowNoIndices:    nil,
+				ExpandWildcards:   "",
+				IgnoreUnavailable: nil,
+				Pretty:            false,
+				Human:             false,
+				ErrorTrace:        false,
+				FilterPath:        nil,
+				Header:            nil,
+			}
+			// Perform the request with the client.
+			res, err := req.Do(context.Background(), clnt.ES)
+			if err != nil {
+				log.Fatalf("Error getting response: %s", err)
+			}
+			defer res.Body.Close()
+
+			if res.IsError() {
+				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
+			} else {
+				// Deserialize the response into a map.
+				var r map[string]interface{}
+				if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+					log.Printf("Error parsing the response body: %s", err)
+				} else {
+					// Print the response status and indexed document version.
+					log.Printf("[%s] %s; version=%d", res.Status(), r["result"], int(r["_version"].(float64)))
+				}
+			}
+		}(i, doc)
+	}
+}
+
 //IndexMany - index one or many documents
 func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 	for i, doc := range jsonArr {
