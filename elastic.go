@@ -86,15 +86,12 @@ func (clnt *Client) MapIndexs(m []map[string]string) {
 				return
 			}
 			fmt.Println(checkres.StatusCode)
-			if checkres.StatusCode == 400 {
+			if checkres.StatusCode == 404 {
 				clnt.CreateIndex(index, body)
 			} else if checkres.StatusCode == 200 {
 				//Update index
 				fmt.Println("Index already exists")
-			} else {
-				clnt.CreateIndex(index, body)
 			}
-
 		}(i, doc)
 	}
 	wg.Wait()
