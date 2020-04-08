@@ -81,39 +81,38 @@ func (clnt *Client) MapIndexs(m []map[string]string) {
 				Index: is,
 			}
 			checkres, err := check.Do(context.Background(), clnt.ES)
-			fmt.Println(checkres.StatusCode)
-			req := esapi.IndicesCreateRequest{
-				Index:      index,
-				Body:       strings.NewReader(body),
-				Pretty:     false,
-				Human:      false,
-				ErrorTrace: false,
-				FilterPath: nil,
-				Header:     nil,
-			}
-			// Perform the request with the client.
-			res, err := req.Do(context.Background(), clnt.ES)
 			if err != nil {
-				log.Fatalf("Error getting response: %s", err)
+				fmt.Println(err)
+				return
 			}
-			defer res.Body.Close()
+			if checkres.StatusCode == 400 {
+				clnt.CreateIndex(index, body)
+			} else if checkres.StatusCode == 200 {
+				//Update index
+				fmt.Println("Index already exists")
+			}
 
-			if res.IsError() {
-				log.Printf("[%s] Error indexing document %s ID=%d", res.Status(), res.String(), i+1)
-			} else {
-				// Deserialize the response into a map.
-				var r map[string]interface{}
-				if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-					log.Printf("Error parsing the response body: %s", err)
-				} else {
-					// Print the response status and indexed document version.
-					//log.Printf("[%s] %s; version=%d", res.Status(), r["result"], int(r["_version"].(float64)))
-					fmt.Println(res)
-				}
-			}
 		}(i, doc)
 	}
 	wg.Wait()
+}
+func (clnt *Client) CreateIndex(index string, body string) {
+	req := esapi.IndicesCreateRequest{
+		Index:      index,
+		Body:       strings.NewReader(body),
+		Pretty:     false,
+		Human:      false,
+		ErrorTrace: false,
+		FilterPath: nil,
+		Header:     nil,
+	}
+	// Perform the request with the client.
+	res, err := req.Do(context.Background(), clnt.ES)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Created index", res.StatusCode)
 }
 
 //IndexMany - index one or many documents
