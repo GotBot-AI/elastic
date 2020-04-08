@@ -74,20 +74,16 @@ func (clnt *Client) MapIndexs(m []map[string]string) {
 		wg.Add(1)
 		go func(i int, doc map[string]string) {
 			defer wg.Done()
-			index := []string{doc["index"]}
+			index := doc["index"]
 			body := doc["map"]
-
-			req := esapi.IndicesPutMappingRequest{
-				Index:             index,
-				Body:              strings.NewReader(body),
-				AllowNoIndices:    nil,
-				ExpandWildcards:   "",
-				IgnoreUnavailable: nil,
-				Pretty:            false,
-				Human:             false,
-				ErrorTrace:        false,
-				FilterPath:        nil,
-				Header:            nil,
+			req := esapi.IndicesCreateRequest{
+				Index:      index,
+				Body:       strings.NewReader(body),
+				Pretty:     false,
+				Human:      false,
+				ErrorTrace: false,
+				FilterPath: nil,
+				Header:     nil,
 			}
 			// Perform the request with the client.
 			res, err := req.Do(context.Background(), clnt.ES)
