@@ -97,7 +97,7 @@ func (clnt *Client) MapIndexs(m []map[string]string) {
 			defer res.Body.Close()
 
 			if res.IsError() {
-				log.Printf("[%s] Error indexing document %s ID=%d", res.Status(), res.String() i+1)
+				log.Printf("[%s] Error indexing document %s ID=%d", res.Status(), res.String(), i+1)
 			} else {
 				// Deserialize the response into a map.
 				var r map[string]interface{}
