@@ -109,6 +109,7 @@ func (clnt *Client) MapIndexs(m []map[string]string) {
 			}
 		}(i, doc)
 	}
+	wg.Wait()
 }
 
 //IndexMany - index one or many documents
