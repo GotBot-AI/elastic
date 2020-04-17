@@ -115,6 +115,40 @@ func (clnt *Client) CreateIndex(index string, body string) {
 	fmt.Println("Created index", res.StatusCode)
 }
 
+func (clnt *Client) IndexOne(index string, str, indexKey string) error {
+	noJsonString := strings.Replace(str, `\`, "", -1)
+	fixId := strings.Replace(noJsonString, `_id`, "id", -1)
+	var d map[string]interface{}
+	json.Unmarshal([]byte(fixId), &d)
+	id := d[indexKey].(string)
+	req := esapi.IndexRequest{
+		Index:      index,
+		DocumentID: id,
+		Body:       strings.NewReader(fixId),
+		Refresh:    "true",
+	}
+	// Perform the request with the client.
+	res, err := req.Do(context.Background(), clnt.ES)
+	if err != nil {
+		return err
+		//log.Fatalf("Error getting response: %s", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return err
+		//log.Printf("[%s] Error indexing document", res.Status())
+	} else {
+		var r map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+			log.Printf("Error parsing the response body: %s", err)
+		} else {
+			log.Printf("[%s] %s; version=%d", res.Status(), r["result"], int(r["_version"].(float64)))
+		}
+	}
+	return nil
+}
+
 //IndexMany - index one or many documents
 func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 	for i, doc := range jsonArr {
@@ -144,6 +178,7 @@ func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 			if res.IsError() {
 				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
 			} else {
+
 				// Deserialize the response into a map.
 				var r map[string]interface{}
 				if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
@@ -200,7 +235,6 @@ func (clnt *Client) Search(index string, query string) map[string]interface{} {
 		int(r["took"].(float64)),
 	)
 	// Print the ID and document source for each hit.
-
 	// for _, hit := range r["hits"].(map[string]interface{})["hits"].([]interface{}) {
 	// 	fmt.Println(hit)
 	// 	log.Printf(" * ID=%s, %s", hit.(map[string]interface{})["_id"], hit.(map[string]interface{})["_source"])
