@@ -115,38 +115,39 @@ func (clnt *Client) CreateIndex(index string, body string) {
 	fmt.Println("Created index", res.StatusCode)
 }
 
-func (clnt *Client) IndexOne(index string, str, indexKey string) error {
-	noJsonString := strings.Replace(str, `\`, "", -1)
-	fixId := strings.Replace(noJsonString, `_id`, "id", -1)
+func (clnt *Client) IndexOne(index string, doc string, indexKey string) {
 	var d map[string]interface{}
-	json.Unmarshal([]byte(fixId), &d)
-	id := d[indexKey].(string)
+	json.Unmarshal([]byte(doc), &d)
+	_id := d[indexKey].(string)
+	if indexKey == "_id" {
+		delete(d, "_id")
+	}
+	j, _ := json.Marshal(d)
 	req := esapi.IndexRequest{
 		Index:      index,
-		DocumentID: id,
-		Body:       strings.NewReader(fixId),
+		DocumentID: _id,
+		Body:       strings.NewReader(string(j)),
 		Refresh:    "true",
 	}
 	// Perform the request with the client.
 	res, err := req.Do(context.Background(), clnt.ES)
 	if err != nil {
-		return err
+		log.Println(res)
 		//log.Fatalf("Error getting response: %s", err)
 	}
 	defer res.Body.Close()
 
 	if res.IsError() {
-		return err
+		log.Println(res)
 		//log.Printf("[%s] Error indexing document", res.Status())
 	} else {
 		var r map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-			log.Printf("Error parsing the response body: %s", err)
+			log.Println(res)
 		} else {
 			log.Printf("[%s] %s; version=%d", res.Status(), r["result"], int(r["_version"].(float64)))
 		}
 	}
-	return nil
 }
 
 //IndexMany - index one or many documents
@@ -155,19 +156,19 @@ func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 		wg.Add(1)
 		go func(i int, doc string) {
 			defer wg.Done()
-			noJsonString := strings.Replace(doc, `\`, "", -1)
-			fixId := strings.Replace(noJsonString, `_id`, "id", -1)
-			fmt.Println(fixId)
 			var d map[string]interface{}
-			json.Unmarshal([]byte(fixId), &d)
-			id := d[indexKey].(string)
+			json.Unmarshal([]byte(doc), &d)
+			_id := d[indexKey].(string)
+			if indexKey == "_id" {
+				delete(d, "_id")
+			}
+			j, _ := json.Marshal(d)
 			req := esapi.IndexRequest{
 				Index:      index,
-				DocumentID: id,
-				Body:       strings.NewReader(fixId),
+				DocumentID: _id,
+				Body:       strings.NewReader(string(j)),
 				Refresh:    "true",
 			}
-
 			// Perform the request with the client.
 			res, err := req.Do(context.Background(), clnt.ES)
 			if err != nil {
@@ -176,7 +177,7 @@ func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 			defer res.Body.Close()
 
 			if res.IsError() {
-				log.Printf("[%s] Error indexing document ID=%d", res.Status(), i+1)
+				log.Println(res)
 			} else {
 
 				// Deserialize the response into a map.
@@ -193,7 +194,7 @@ func (clnt *Client) IndexMany(index string, jsonArr []string, indexKey string) {
 	wg.Wait()
 }
 
-func (clnt *Client) Search(index string, query string) map[string]interface{} {
+func (clnt *Client) Search(index string, query string) []map[string]interface{} {
 
 	bytes := bytes.NewBufferString(query)
 	res, err := clnt.ES.Search(
@@ -234,10 +235,16 @@ func (clnt *Client) Search(index string, query string) map[string]interface{} {
 		int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64)),
 		int(r["took"].(float64)),
 	)
-	// Print the ID and document source for each hit.
-	// for _, hit := range r["hits"].(map[string]interface{})["hits"].([]interface{}) {
-	// 	fmt.Println(hit)
-	// 	log.Printf(" * ID=%s, %s", hit.(map[string]interface{})["_id"], hit.(map[string]interface{})["_source"])
-	// }
-	return r
+	hits := r["hits"].(map[string]interface{})["hits"].([]interface{})
+	var results []map[string]interface{}
+	for _, item := range hits {
+		i, ok := item.(map[string]interface{})
+		if !ok {
+			log.Fatal("Error parsing map")
+		}
+		s := i["_source"].(map[string]interface{})
+		s["_id"] = i["_id"]
+		results = append(results, s)
+	}
+	return results
 }
